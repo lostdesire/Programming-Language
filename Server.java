@@ -34,7 +34,7 @@ public class Server implements Runnable{
 	
 	@Override
 	public void run() {
-		System.out.println("클라이언트 : " + Thread.currentThread().getName() + "연결됨!");
+		System.out.println(Thread.currentThread().getName() + " 연결됨!");
 		try(
 				// 수신용 버퍼
 				BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -43,10 +43,10 @@ public class Server implements Runnable{
 		){
 			String inputLine;
 			while((inputLine = br.readLine()) != null) {
-				System.out.println(Thread.currentThread().getName() + ": " + inputLine);
-				out.println(inputLine);
+				System.out.println(Thread.currentThread().getName() + " : " + inputLine);
+				out.println(Thread.currentThread().getName() + " : " + inputLine);
 			}
-			System.out.println("클라이언트 : " + Thread.currentThread().getName() + "종료됨!");
+			System.out.println(Thread.currentThread().getName() + " 종료됨!");
 		}catch(IOException ex) {
 			ex.printStackTrace();
 		}
