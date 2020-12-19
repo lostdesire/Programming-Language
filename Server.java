@@ -34,13 +34,17 @@ public class Server implements Runnable{
 	
 	@Override
 	public void run() {
-		System.out.println(Thread.currentThread().getName() + " 연결됨!");
 		try(
 				// 수신용 버퍼
 				BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 				// 송신용 버퍼
 				PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)
 		){
+			String name;
+			name = br.readLine();
+			Thread.currentThread().setName(name);
+			System.out.println(Thread.currentThread().getName() + " 연결됨!");
+			
 			String inputLine;
 			while((inputLine = br.readLine()) != null) {
 				System.out.println(Thread.currentThread().getName() + " : " + inputLine);

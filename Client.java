@@ -11,7 +11,7 @@ public class Client {
 		Scanner scv = new Scanner(System.in);
 		System.out.println("에코 클라이언트 시작~");
 		System.out.print("이름 입력 : ");
-		String nickname = scv.nextLine();
+		String name = scv.nextLine();
 		try {
 			InetAddress localAddress = InetAddress.getLocalHost();
 
@@ -20,6 +20,7 @@ public class Client {
 					BufferedReader br = new BufferedReader(new InputStreamReader(cSocket.getInputStream()))
 							) {
 				System.out.println("서버에 연결됨!");
+				out.println(name);
 				while (true) {
 					System.out.print("메세지 입력 : ");
 					String inputLine = scv.nextLine();
@@ -33,7 +34,7 @@ public class Client {
 				scv.close();
 			}
 		} catch (IOException ex) {
-
+				ex.printStackTrace();
 		}
 	}
 }
