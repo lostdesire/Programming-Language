@@ -1,40 +1,115 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
-	public static void main(String[] args) {
-		Scanner scv = new Scanner(System.in);
-		System.out.println("에코 클라이언트 시작~");
-		System.out.print("이름 입력 : ");
-		String name = scv.nextLine();
-		try {
+	public static void main(String[] args){
+		try{
 			InetAddress localAddress = InetAddress.getLocalHost();
+            Socket socket = new Socket(localAddress, 8000);      
+            System.out.println("마피아 서버 접속");
+           
+            DataInputStream in = new DataInputStream(socket.getInputStream());
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            String name = "";
+            Scanner scv = new Scanner(System.in);  
+            while(true){
+                System.out.println("이름을 입력해 주세요.");
+                name = scv.nextLine();
+                out.writeUTF(name);
+                out.flush();
+                String chk_code = in.readUTF();
+                if(!chk_code.equals("중복된 이름입니다.")){
+                    break;
+                }
+                System.out.println("중복된 이름입니다.");
+            }
+                
+            System.out.println("마피아 서버 입장");
+            
+            Thread sender = new Sender(name, socket);
+            sender.start();
+            Thread receiver = new Receiver(socket); 
+            receiver.start();
+        }catch(Exception e){
+        	e.printStackTrace();
+        }   
+    }//Main
+}
 
-			try (Socket cSocket = new Socket(localAddress, 8000);
-					PrintWriter out = new PrintWriter(cSocket.getOutputStream(), true);
-					BufferedReader br = new BufferedReader(new InputStreamReader(cSocket.getInputStream()))
-							) {
-				System.out.println("서버에 연결됨!");
-				out.println(name);
-				while (true) {
-					System.out.print("메세지 입력 : ");
-					String inputLine = scv.nextLine();
-					if ("quit".equalsIgnoreCase(inputLine)) {
-						break;
-					}
-					out.println(inputLine);
-					String response = br.readLine();
-					System.out.println(response);
-				}
-				scv.close();
+class Receiver extends Thread{
+	Socket socket;
+	DataInputStream in;
+	
+	public Receiver(Socket socket){
+		this.socket = socket;
+		try{
+			in = new DataInputStream(this.socket.getInputStream());
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+	}//Receiver 생성자
+	
+	@Override
+	public void run(){
+		try{
+			while(in != null){
+				String msg=in.readUTF();
+                if(msg.equals("중복된 이름입니다.")){
+                    System.out.println("중복된 이름입니다.");
+                }else{
+                    System.out.println(msg);
+                }
 			}
-		} catch (IOException ex) {
-				ex.printStackTrace();
+		} catch(Exception e){
+			e.printStackTrace();
 		}
 	}
+}
+
+class Sender extends Thread{
+	Socket socket;
+	DataOutputStream out;
+    String name;
+    
+    public Sender(String name, Socket socket){
+    	this.socket = socket;
+    	try{
+    		out = new DataOutputStream(this.socket.getOutputStream());
+    		this.name = name;
+    	} catch(Exception e){
+    		e.printStackTrace();
+    	}
+    }//Sender 생성자
+    
+    @Override
+    public void run(){
+    	Scanner scv = new Scanner(System.in);
+    	try{
+    		while(out != null){
+    			String msg = scv.nextLine();
+    			
+    			if(msg.trim().startsWith("!")){
+    				if(msg.startsWith("!투표")){
+    					
+    				}
+    				else if(msg.startsWith("!quit")){
+    					System.out.println("서버에서 나갑니다.");
+    					break;
+    				}
+    				else{
+    					System.out.println("없는 명령어 업니다. 다시 입력해 주세요.");
+    				}
+    			}
+    			else{
+    				out.writeUTF("[" + name + "] : " + msg);
+    			}
+    		}
+    		scv.close();
+    	} catch(Exception e){
+    		e.printStackTrace();
+    	}
+    }
 }
