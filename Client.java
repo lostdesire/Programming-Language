@@ -6,6 +6,8 @@ import java.util.Scanner;
 
 public class Client {
 	public static void main(String[] args){
+		Scanner scv = new Scanner(System.in);
+		
 		try{
 			InetAddress localAddress = InetAddress.getLocalHost();
             Socket socket = new Socket(localAddress, 8000);      
@@ -14,7 +16,6 @@ public class Client {
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             String name = "";
-            Scanner scv = new Scanner(System.in);  
             while(true){
                 System.out.println("이름을 입력해 주세요.");
                 name = scv.nextLine();
@@ -34,6 +35,7 @@ public class Client {
             Thread receiver = new Receiver(socket); 
             receiver.start();
         }catch(Exception e){
+        	scv.close();
         	e.printStackTrace();
         }   
     }//Main
@@ -56,7 +58,7 @@ class Receiver extends Thread{
 	public void run(){
 		try{
 			while(in != null){
-				String msg=in.readUTF();
+				String msg = in.readUTF();
                 if(msg.equals("중복된 이름입니다.")){
                     System.out.println("중복된 이름입니다.");
                 }else{
@@ -93,10 +95,19 @@ class Sender extends Thread{
     			
     			if(msg.trim().startsWith("!")){
     				if(msg.startsWith("!투표")){
-    					
+    					out.writeUTF(msg);
+    				}
+    				else if(msg.startsWith("!분석")){
+    					out.writeUTF(msg);
+    				}
+    				else if(msg.startsWith("!제물")){
+    					out.writeUTF(msg);
     				}
     				else if(msg.startsWith("!quit")){
     					System.out.println("서버에서 나갑니다.");
+    					out.writeUTF(msg);
+    					scv.close();
+    					System.exit(0);
     					break;
     				}
     				else{
@@ -107,7 +118,6 @@ class Sender extends Thread{
     				out.writeUTF("[" + name + "] : " + msg);
     			}
     		}
-    		scv.close();
     	} catch(Exception e){
     		e.printStackTrace();
     	}
