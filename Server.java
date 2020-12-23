@@ -12,6 +12,7 @@ public class Server{
 	ServerSocket serverSocket = null;
 	Socket socket = null;
 	boolean day = true;
+	boolean kill = true;
 	int win = 0;
 	
 	public Server(){
@@ -55,11 +56,13 @@ public class Server{
 	
 	public void sendToJob(String job, String msg){
 		Iterator<String> iter = jobs.keySet().iterator();
-	       
+	    String name;
+	    
         while(iter.hasNext()){
-        	if(jobs.get(iter.next()) == job){
+        	name = iter.next();
+        	if(jobs.get(name) == job){
         		try{
-                    DataOutputStream out = (DataOutputStream) clients.get(iter.next());
+                    DataOutputStream out = (DataOutputStream) clients.get(name);
                     out.writeUTF(msg);
                 }catch(Exception e){
                     e.printStackTrace();
@@ -68,21 +71,80 @@ public class Server{
         }
 	}//특정 직업에 전송
 	
+	public void jobSetting(){
+		Iterator<String> iter = clients.keySet().iterator();
+		int sci = 1;
+		int skr = 2;
+		int bet = 1;
+		String temp[] = new String[10];
+		
+		for(int i = 0; i < 10; i++){
+			if(i < sci)
+				temp[i] = "1";
+			else if(i < sci + skr)
+				temp[i] = "2";
+			else if(i < sci + skr + bet)
+				temp[i] = "3";
+			else
+				temp[i] = "0";
+		}
+		List<String> job_list = Arrays.asList(temp);
+		Collections.shuffle(job_list);
+		String sci_name = "";
+		
+		for(int i = 0; i < job_list.size(); i ++){
+			String name = iter.next();
+			switch(job_list.get(i)){
+			case "0":
+				jobs.put(name, "Citizen");
+				break;
+			case "1":
+				jobs.put(name, "Scientist");
+				sci_name = name;
+				break;
+			case "2":
+				jobs.put(name, "Skrull");
+				break;
+			case "3":
+				jobs.put(name, "Betrayer");
+				break;
+			}
+		}
+		sendToJob("Citizen", "당신은 시민입니다.");
+		sendToJob("Scientist", "당신은 과학자입니다.");
+		sendToJob("Skrull", "당신은 스크럴입니다.");
+		sendToJob("Betrayer", "당신은 배신자입니다.");
+		
+		sendToJob("Skrull", "================");
+		sendToJob("Betrayer", "================");
+		sendToJob("Skrull", "과학자는 " + sci_name + "입니다.");
+		sendToJob("Betrayer", "과학자는 " + sci_name + "입니다.");
+		sendToJob("Skrull", "================");
+		sendToJob("Betrayer", "================");
+	}//직업 배분
+	
 	public String voteResult(){
 		Iterator<String> iter = votes.keySet().iterator();
 		int vote = 0;
 		String name = "";
+		String v_name = "";
 		while(iter.hasNext()){
-			if(votes.get(iter.next()) == 0){
+			name = iter.next();
+			if(votes.get(name) == 0){
 				continue;
 			}
-			if(votes.get(iter.next()) > vote){
-				name = iter.next();
-				vote = votes.get(iter.next());
+			else if(votes.get(name) > vote){
+				vote = votes.get(name);
+				v_name = name;
 			}
 		}
-		return name;
-	}
+		if(vote == 0){
+			return "";
+		}
+		else{
+			return v_name;
+		}
+	}//투표 결과
 	
 	public void voteReset(){
 		Iterator<String> iter = votes.keySet().iterator();
@@ -90,7 +152,7 @@ public class Server{
 		while(iter.hasNext()){
 			votes.put(iter.next(), 0);
 		}
-	}
+	}//투표 리셋
 	
 	public void winResult(){
 		Iterator<String> iter = jobs.keySet().iterator();
@@ -98,16 +160,17 @@ public class Server{
 		int skrull_num = 0;
 		
 		while(iter.hasNext()){
-			if(iter.next() == "Citizen"){
+			String job = jobs.get(iter.next());
+			if(job == "Citizen"){
 				earth_num++;
 			}
-			else if(iter.next() == "Scientist"){
+			else if(job == "Scientist"){
 				earth_num++;
 			}
-			else if(iter.next() == "Skrull"){
+			else if(job == "Skrull"){
 				skrull_num++;
 			}
-			else if(iter.next() == "Betrayer"){
+			else if(job == "Betrayer"){
 				skrull_num++;
 			}
 		}
@@ -120,7 +183,30 @@ public class Server{
 		else{
 			win = 0;
 		}
-	}
+	}//승리 결과
+	
+	public void deleteName(String name){
+		clients.remove(name);
+		jobs.remove(name);
+		votes.remove(name);
+	}//나간 인원 비우기
+	
+	public boolean isTwoSkrull(){
+		Iterator<String> iter = jobs.keySet().iterator();
+		int skr_num = 0;
+		
+		while(iter.hasNext()){
+			if(jobs.get(iter.next()) == "Skrull"){
+				skr_num++;
+			}
+		}
+		if(skr_num == 2){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}//스크럴 2명 생존 체크
 	
 	public static void main(String[] args){
 		Server server = new Server();
@@ -159,47 +245,115 @@ public class Server{
         		}
         		clients.put(name, out);
         		votes.put(name, 0);
+        		sendToAll("---------------------");
         		sendToAll("[" + name + "]님이 접속하셨습니다.");
+        		sendToAll("---------------------");
+        		
+        		if(clients.size() == 10){
+        			Thread daySetting = new DaySetting();
+        			daySetting.start();
+        		}
         		while(in != null){
         			String msg = in.readUTF();
         			
-        			if(jobs.get(name) == "Dead"){
-        				System.out.println("<사망자>" + msg);
-        				sendToJob("Dead", "<사망자>" + msg);
-        				continue;
-        			}
+        			if(day){
+        				if(jobs.get(name) == "Dead"){
+        					if(msg.equals("!quit")){
+        						System.out.println(name + "님이 퇴장하셨습니다.");
+            	        		sendToAll(name + "님이 퇴장하셨습니다.");
+            	        		deleteName(name);
+            					break;
+        					}
+            				System.out.println("<사망자>" + msg);
+            				sendToJob("Dead", "<사망자>" + msg);
+            				continue;
+            			}
+        				if(msg.startsWith("!")){
+            				if(msg.startsWith("!투표")){
+            					msg = msg.replace("!투표 ", "");
+            					if(jobs.get(msg) == "Dead"){
+            						sendToJob("이미 죽은 사람입니다." ,"Skrull");
+        							sendToJob("이미 죽은 사람입니다." ,"Betrayer");
+            						continue;
+            					}
+            					int vote = votes.get(msg);
+            					votes.put(msg, vote + 1);
+            				}
+            				else if(msg.startsWith("!분석") && (jobs.get(name) == "Scientist")){
+            					msg = msg.replace("!분석 ", "");
+            					if(jobs.get(msg) == "Scientist"){
+            						continue;
+            					}
+            					if(jobs.get(msg) == "Skrull"){
+            						sendToAll(msg + "은 스크럴입니다! 추방하세요!");
+            					}
+            					else{
+            						sendToAll("분석이 실패했습니다.");
+            					}
+            				}
+            				else if(msg.equals("!quit")){
+            					System.out.println(name + "님이 퇴장하셨습니다.");
+            	        		sendToAll(name + "님이 퇴장하셨습니다.");
+            	        		deleteName(name);
+            					break;
+            				}
+        				}
+        				else{
+            				System.out.println(msg);
+            				sendToAll(msg);
+        				}
+        			}//낮
         			
-        			if(msg.startsWith("!")){
-        				if(msg.startsWith("!투표")){
-        					msg.replace("!투표", "");
-        					int vote = votes.get(msg.trim());
-        					votes.put(msg.trim(), vote++);
-        				}
-        				else if(msg.startsWith("!분석") && (jobs.get(name) == "Scientist")){
-        					msg.replace("!분석", "");
-        					if(jobs.get(msg.trim()) == "Skrull"){
-        						sendToAll(msg.trim() + "은 스크럴입니다! 추방하세요!");
+        			if(!day){
+        				if(jobs.get(name) == "Dead"){
+        					if(msg.equals("!quit")){
+        						System.out.println(name + "님이 퇴장하셨습니다.");
+            	        		sendToAll(name + "님이 퇴장하셨습니다.");
+            	        		deleteName(name);
+            					break;
         					}
-        					else{
-        						sendToAll("분석이 실패했습니다.");
-        					}
-        				}
-        				else if(msg.startsWith("!제물") && ((jobs.get(name) == "Skrull") || (jobs.get(name) == "Betrayer"))){
-        					if(msg.startsWith("!제물")){
-        						msg.replace("!제물", "");
-        						jobs.put(msg.trim(), "Dead");
-        					}
-        				}
-        				else if(msg.equals("!quit")){
-        					System.out.println(name + "님이 퇴장하셨습니다.");
-        	        		sendToAll(name + "님이 퇴장하셨습니다.");
-        					break;
-        				}
-        			}// 명령어 입력시
-        			else{
-        				System.out.println(msg);
-        				sendToAll(msg);
-        			}
+            				System.out.println("<사망자>" + msg);
+            				sendToJob("Dead", "<사망자>" + msg);
+            				continue;
+            			}
+        				if(msg.startsWith("!")){
+            				if(msg.startsWith("!제물") && ((jobs.get(name) == "Skrull") || (jobs.get(name) == "Betrayer"))){
+            					if(msg.startsWith("!제물") && kill){
+            						msg = msg.replace("!제물 ", "");
+            						if(jobs.get(msg) == "Skrull" || jobs.get(msg) == "Betrayer"){
+            							sendToJob("같은 스크럴 진영입니다." ,"Skrull");
+            							sendToJob("같은 스크럴 진영입니다." ,"Betrayer");
+            							continue;
+            						}
+            						else if(jobs.get(msg) == "Dead"){
+            							sendToJob("이미 죽은 사람입니다." ,"Skrull");
+            							sendToJob("이미 죽은 사람입니다." ,"Betrayer");
+            							continue;
+            						}
+            						else if(isTwoSkrull() && jobs.get(msg) == "Scientist"){
+            							sendToJob("아직 과학자를 죽일수 없습니다." ,"Skrull");
+            							sendToJob("아직 과학자를 죽일수 없습니다." ,"Betrayer");
+            							continue;
+            						}
+            						sendToAll("제물이 선택되었습니다.");
+            						sendToAll("선택된 제물은 " + msg + "입니다.");
+            						jobs.put(msg, "Dead");
+            						kill = false;
+            					}
+            				}
+            				else if(msg.equals("!quit")){
+            					System.out.println(name + "님이 퇴장하셨습니다.");
+            					deleteName(name);
+            	        		sendToAll(name + "님이 퇴장하셨습니다.");
+            					break;
+            				}
+            			}// 명령어 입력시
+            			else if(jobs.get(name) == "Skrull" || jobs.get(name) == "Betrayer"){
+            				System.out.println(msg);
+            				sendToJob("Skrull", msg);
+            				sendToJob("Betrayer", msg);
+            			}
+        			}//밤
         		}
         	} catch(SocketException se){
         		se.printStackTrace();
@@ -220,34 +374,50 @@ public class Server{
 		
 		@Override
 		public void run(){
+			System.out.println("================");
 			System.out.println("게임을 시작합니다.");
+			System.out.println("================");
+			sendToAll("================");
 			sendToAll("게임을 시작합니다.");
+			sendToAll("================");
+			
+			jobSetting();
+			voteReset();
 			
 			while(true){
 				try {
+					System.out.println("================");
 					System.out.println("낮이 밝았습니다.");
+					System.out.println("================");
+					sendToAll("================");
 					sendToAll("낮이 밝았습니다.");
+					sendToAll("================");
+					
+					day = true;
+					
+					winResult();
 					if(win == 1){
+						System.out.println("================");
 						System.out.println("지구인 진영이 승리했습니다.");
+						System.out.println("================");
+						sendToAll("================");
 						sendToAll("지구인 진영이 승리했습니다.");
+						sendToAll("================");
 						break;
 					}
 					else if(win == 2){
+						System.out.println("================");
 						System.out.println("스크럴 진영이 승리했습니다.");
+						System.out.println("================");
+						sendToAll("================");
 						sendToAll("스크럴 진영이 승리했습니다.");
+						sendToAll("================");
 						break;
 					}
-					day = true;
-					if(voteResult() != ""){
-						System.out.println(voteResult() + "님이 추방되었습니다.");
-						sendToAll(voteResult() + "님이 추방되었습니다.");
-						jobs.put(voteResult(), "Dead");
-						voteReset();
-					}
 					
-					System.out.println("3분 남았습니다.");
-					sendToAll("3분 남았습니다.");
-					for(int i = 0; i < 180; i++){
+					System.out.println("1분 남았습니다.");
+					sendToAll("1분 남았습니다.");
+					for(int i = 0; i < 60; i++){
 						Thread.sleep(1000);
 					}
 					
@@ -256,10 +426,48 @@ public class Server{
 					for(int i = 0; i < 60; i++){
 						Thread.sleep(1000);
 					}
-					
+					System.out.println("================");
 					System.out.println("밤이 찾아왔습니다.");
+					System.out.println("================");
+					sendToAll("================");
 					sendToAll("밤이 찾아왔습니다.");
+					sendToAll("================");
+					
+					kill = true;
 					day = false;
+					
+					String vote;
+					if((vote = voteResult()) != ""){
+						System.out.println("================");
+						System.out.println(vote + "님이 추방되었습니다.");
+						System.out.println("================");
+						sendToAll("================");
+						sendToAll(vote + "님이 추방되었습니다.");
+						sendToAll("================");
+						jobs.put(vote, "Dead");
+					}
+					voteReset();
+					
+					winResult();
+					if(win == 1){
+						System.out.println("================");
+						System.out.println("지구인 진영이 승리했습니다.");
+						System.out.println("================");
+						sendToAll("================");
+						sendToAll("지구인 진영이 승리했습니다.");
+						sendToAll("================");
+						break;
+					}
+					else if(win == 2){
+						System.out.println("================");
+						System.out.println("스크럴 진영이 승리했습니다.");
+						System.out.println("================");
+						sendToAll("================");
+						sendToAll("스크럴 진영이 승리했습니다.");
+						sendToAll("================");
+						break;
+					}
+					
 					for(int i = 0; i < 60; i++){
 						Thread.sleep(1000);
 					}
