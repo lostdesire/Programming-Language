@@ -1,4 +1,1 @@
-
-public abstract class Person {
-
-}
+// not used
