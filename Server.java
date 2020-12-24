@@ -6,14 +6,15 @@ import java.net.SocketException;
 import java.util.*;
 
 public class Server{
-	HashMap<String, DataOutputStream> clients;
-	HashMap<String, String> jobs;
-	HashMap<String, Integer> votes;
+	HashMap<String, DataOutputStream> clients;	// clients 정보
+	HashMap<String, String> jobs;				// 직업 정보
+	HashMap<String, Integer> votes;				// 투표 결과
 	ServerSocket serverSocket = null;
 	Socket socket = null;
-	boolean day = true;
-	boolean kill = true;
-	int win = 0;
+	boolean day = true;							// 낮이면 true, 밤이면 false
+	boolean kill = true;						// 제물이 선택되면 false, 다음 밤이 되면 true
+	int win = 0;								// 승리 조건 (0 : 계속 진행, 1 : 지구인 진영 승리, 2 : 스크럴 진영 승리)
+	int skip = 0;								// 투표 스킵 카운터
 	
 	public Server(){
 		clients = new HashMap<String, DataOutputStream>();
@@ -29,7 +30,7 @@ public class Server{
 			serverSocket = new ServerSocket(8000);
 			System.out.println("마피아 서버 시작");
 			
-			while(true){
+			while(true){ 
                 socket = serverSocket.accept();
                 System.out.println(socket.getInetAddress() + ":" + socket.getPort() + "에서 접속");
                
@@ -39,7 +40,7 @@ public class Server{
 		}catch(Exception e){
             e.printStackTrace();
         }
-	}//Server 초기설정
+	}//Server 생성 밑 Manager 스레드 가동
 	
 	public void sendToAll(String msg){
 		Iterator<String> iter = clients.keySet().iterator();
@@ -138,7 +139,7 @@ public class Server{
 				v_name = name;
 			}
 		}
-		if(vote == 0){
+		if(vote == 0 || skip >= vote){
 			return "";
 		}
 		else{
@@ -272,9 +273,11 @@ public class Server{
             				if(msg.startsWith("!투표")){
             					msg = msg.replace("!투표 ", "");
             					if(jobs.get(msg) == "Dead"){
-            						sendToJob("이미 죽은 사람입니다." ,"Skrull");
-        							sendToJob("이미 죽은 사람입니다." ,"Betrayer");
+            						out.writeUTF(msg + "는 이미 죽은 사람입니다.");
             						continue;
+            					}
+            					else if(msg == "skip"){
+            						skip++;
             					}
             					int vote = votes.get(msg);
             					votes.put(msg, vote + 1);
@@ -321,18 +324,15 @@ public class Server{
             					if(msg.startsWith("!제물") && kill){
             						msg = msg.replace("!제물 ", "");
             						if(jobs.get(msg) == "Skrull" || jobs.get(msg) == "Betrayer"){
-            							sendToJob("같은 스크럴 진영입니다." ,"Skrull");
-            							sendToJob("같은 스크럴 진영입니다." ,"Betrayer");
+            							out.writeUTF("같은 스크럴 진영입니다.");
             							continue;
             						}
             						else if(jobs.get(msg) == "Dead"){
-            							sendToJob("이미 죽은 사람입니다." ,"Skrull");
-            							sendToJob("이미 죽은 사람입니다." ,"Betrayer");
+            							out.writeUTF("이미 죽은 사람입니다.");
             							continue;
             						}
             						else if(isTwoSkrull() && jobs.get(msg) == "Scientist"){
-            							sendToJob("아직 과학자를 죽일수 없습니다." ,"Skrull");
-            							sendToJob("아직 과학자를 죽일수 없습니다." ,"Betrayer");
+            							out.writeUTF("아직 과학자를 죽일 수 없습니다.");
             							continue;
             						}
             						sendToAll("제물이 선택되었습니다.");
@@ -396,6 +396,7 @@ public class Server{
 					day = true;
 					
 					winResult();
+					
 					if(win == 1){
 						System.out.println("================");
 						System.out.println("지구인 진영이 승리했습니다.");
@@ -415,14 +416,17 @@ public class Server{
 						break;
 					}
 					
+					for(int i = 0; i < 120; i++){
+						Thread.sleep(1000);
+					}
 					System.out.println("1분 남았습니다.");
 					sendToAll("1분 남았습니다.");
 					for(int i = 0; i < 60; i++){
 						Thread.sleep(1000);
 					}
 					
-					System.out.println("투표 시간입니다.");
-					sendToAll("투표 시간입니다.");
+					System.out.println("투표 종료 1분 남았습니다.");
+					sendToAll("투표 종료 1분 남았습니다.");
 					for(int i = 0; i < 60; i++){
 						Thread.sleep(1000);
 					}
@@ -447,6 +451,7 @@ public class Server{
 						jobs.put(vote, "Dead");
 					}
 					voteReset();
+					skip = 0;
 					
 					winResult();
 					if(win == 1){
