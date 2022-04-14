@@ -5,482 +5,462 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.*;
 
-public class Server{
-	HashMap<String, DataOutputStream> clients;	// clients Á¤º¸
-	HashMap<String, String> jobs;				// Á÷¾÷ Á¤º¸
-	HashMap<String, Integer> votes;				// ÅõÇ¥ °á°ú
-	ServerSocket serverSocket = null;
-	Socket socket = null;
-	boolean day = true;							// ³·ÀÌ¸é true, ¹ãÀÌ¸é false
-	boolean kill = true;						// Á¦¹°ÀÌ ¼±ÅÃµÇ¸é false, ´ÙÀ½ ¹ãÀÌ µÇ¸é true
-	int win = 0;								// ½Â¸® Á¶°Ç (0 : °è¼Ó ÁøÇà, 1 : Áö±¸ÀÎ Áø¿µ ½Â¸®, 2 : ½ºÅ©·² Áø¿µ ½Â¸®)
-	int skip = 0;								// ÅõÇ¥ ½ºÅµ Ä«¿îÅÍ
-	
-	public Server(){
-		clients = new HashMap<String, DataOutputStream>();
-		Collections.synchronizedMap(clients);
-		jobs = new HashMap<String, String>();
-		Collections.synchronizedMap(jobs);
-		votes = new HashMap<String, Integer>();
-		Collections.synchronizedMap(votes);
-	}//Server »ı¼ºÀÚ
-	
-	public void init(){
-		try{
-			serverSocket = new ServerSocket(8000);
-			System.out.println("¸¶ÇÇ¾Æ ¼­¹ö ½ÃÀÛ");
-			
-			while(true){ 
+public class Server {
+    HashMap < String, DataOutputStream > clients; 	// clients ì •ë³´
+    HashMap < String, String > jobs; 			// ì§ì—… ì •ë³´
+    HashMap < String, Integer > votes; 			// íˆ¬í‘œ ê²°ê³¼
+    ServerSocket serverSocket = null;
+    Socket socket = null;
+    boolean day = true; 		// ë‚®ì´ë©´ true, ë°¤ì´ë©´ false
+    boolean kill = true; 		// ì œë¬¼ì´ ì„ íƒë˜ë©´ false, ë‹¤ìŒ ë°¤ì´ ë˜ë©´ true
+    int win = 0; 			// ìŠ¹ë¦¬ ì¡°ê±´ (0 : ê³„ì† ì§„í–‰, 1 : ì§€êµ¬ì¸ ì§„ì˜ ìŠ¹ë¦¬, 2 : ìŠ¤í¬ëŸ´ ì§„ì˜ ìŠ¹ë¦¬)
+    int skip = 0; 			// íˆ¬í‘œ ìŠ¤í‚µ ì¹´ìš´í„°
+
+    public Server() {
+        clients = new HashMap < String, DataOutputStream > ();
+        Collections.synchronizedMap(clients);
+        jobs = new HashMap < String, String > ();
+        Collections.synchronizedMap(jobs);
+        votes = new HashMap < String, Integer > ();
+        Collections.synchronizedMap(votes);
+    } //Server ìƒì„±ì
+
+    public void init() {
+        try {
+            serverSocket = new ServerSocket(8000);
+            System.out.println("ë§ˆí”¼ì•„ ì„œë²„ ì‹œì‘");
+
+            while (true) {
                 socket = serverSocket.accept();
-                System.out.println(socket.getInetAddress() + ":" + socket.getPort() + "¿¡¼­ Á¢¼Ó");
-               
+                System.out.println(socket.getInetAddress() + ":" + socket.getPort() + "ì—ì„œ ì ‘ì†");
+
                 Thread manager = new Manager(socket);
                 manager.start();
             }
-		}catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
-	}//Server »ı¼º ¹Ø Manager ½º·¹µå °¡µ¿
-	
-	public void sendToAll(String msg){
-		Iterator<String> iter = clients.keySet().iterator();
-	       
-        while(iter.hasNext()){
-            try{
+    } //Server ìƒì„± ë°‘ Manager ìŠ¤ë ˆë“œ ê°€ë™
+
+    public void sendToAll(String msg) {
+        Iterator < String > iter = clients.keySet().iterator();
+
+        while (iter.hasNext()) {
+            try {
                 DataOutputStream out = (DataOutputStream) clients.get(iter.next());
                 out.writeUTF(msg);
-            }catch(Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-	}//ÀüÃ¼ Àü¼Û
-	
-	public void sendToJob(String job, String msg){
-		Iterator<String> iter = jobs.keySet().iterator();
-	    String name;
-	    
-        while(iter.hasNext()){
-        	name = iter.next();
-        	if(jobs.get(name) == job){
-        		try{
+    } //ì „ì²´ ì „ì†¡
+
+    public void sendToJob(String job, String msg) {
+        Iterator < String > iter = jobs.keySet().iterator();
+        String name;
+
+        while (iter.hasNext()) {
+            name = iter.next();
+            if (jobs.get(name) == job) {
+                try {
                     DataOutputStream out = (DataOutputStream) clients.get(name);
                     out.writeUTF(msg);
-                }catch(Exception e){
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
-        	}
+            }
         }
-	}//Æ¯Á¤ Á÷¾÷¿¡ Àü¼Û
-	
-	public void jobSetting(){
-		Iterator<String> iter = clients.keySet().iterator();
-		int sci = 1;
-		int skr = 2;
-		int bet = 1;
-		String temp[] = new String[10];
-		
-		for(int i = 0; i < 10; i++){
-			if(i < sci)
-				temp[i] = "1";
-			else if(i < sci + skr)
-				temp[i] = "2";
-			else if(i < sci + skr + bet)
-				temp[i] = "3";
-			else
-				temp[i] = "0";
-		}
-		List<String> job_list = Arrays.asList(temp);
-		Collections.shuffle(job_list);
-		String sci_name = "";
-		
-		for(int i = 0; i < job_list.size(); i ++){
-			String name = iter.next();
-			switch(job_list.get(i)){
-			case "0":
-				jobs.put(name, "Citizen");
-				break;
-			case "1":
-				jobs.put(name, "Scientist");
-				sci_name = name;
-				break;
-			case "2":
-				jobs.put(name, "Skrull");
-				break;
-			case "3":
-				jobs.put(name, "Betrayer");
-				break;
-			}
-		}
-		sendToJob("Citizen", "´ç½ÅÀº ½Ã¹ÎÀÔ´Ï´Ù.");
-		sendToJob("Scientist", "´ç½ÅÀº °úÇĞÀÚÀÔ´Ï´Ù.");
-		sendToJob("Skrull", "´ç½ÅÀº ½ºÅ©·²ÀÔ´Ï´Ù.");
-		sendToJob("Betrayer", "´ç½ÅÀº ¹è½ÅÀÚÀÔ´Ï´Ù.");
-		
-		sendToJob("Skrull", "================");
-		sendToJob("Betrayer", "================");
-		sendToJob("Skrull", "°úÇĞÀÚ´Â " + sci_name + "ÀÔ´Ï´Ù.");
-		sendToJob("Betrayer", "°úÇĞÀÚ´Â " + sci_name + "ÀÔ´Ï´Ù.");
-		sendToJob("Skrull", "================");
-		sendToJob("Betrayer", "================");
-	}//Á÷¾÷ ¹èºĞ
-	
-	public String voteResult(){
-		Iterator<String> iter = votes.keySet().iterator();
-		int vote = 0;
-		String name = "";
-		String v_name = "";
-		while(iter.hasNext()){
-			name = iter.next();
-			if(votes.get(name) == 0){
-				continue;
-			}
-			else if(votes.get(name) > vote){
-				vote = votes.get(name);
-				v_name = name;
-			}
-		}
-		if(vote == 0 || skip >= vote){
-			return "";
-		}
-		else{
-			return v_name;
-		}
-	}//ÅõÇ¥ °á°ú
-	
-	public void voteReset(){
-		Iterator<String> iter = votes.keySet().iterator();
-		
-		while(iter.hasNext()){
-			votes.put(iter.next(), 0);
-		}
-	}//ÅõÇ¥ ¸®¼Â
-	
-	public void winResult(){
-		Iterator<String> iter = jobs.keySet().iterator();
-		int earth_num = 0;
-		int skrull_num = 0;
-		
-		while(iter.hasNext()){
-			String job = jobs.get(iter.next());
-			if(job == "Citizen"){
-				earth_num++;
-			}
-			else if(job == "Scientist"){
-				earth_num++;
-			}
-			else if(job == "Skrull"){
-				skrull_num++;
-			}
-			else if(job == "Betrayer"){
-				skrull_num++;
-			}
-		}
-		if(skrull_num == 0){
-			win = 1;
-		}
-		else if(skrull_num >= earth_num){
-			win = 2;
-		}
-		else{
-			win = 0;
-		}
-	}//½Â¸® °á°ú
-	
-	public void deleteName(String name){
-		clients.remove(name);
-		jobs.remove(name);
-		votes.remove(name);
-	}//³ª°£ ÀÎ¿ø ºñ¿ì±â
-	
-	public boolean isTwoSkrull(){
-		Iterator<String> iter = jobs.keySet().iterator();
-		int skr_num = 0;
-		
-		while(iter.hasNext()){
-			if(jobs.get(iter.next()) == "Skrull"){
-				skr_num++;
-			}
-		}
-		if(skr_num == 2){
-			return true;
-		}
-		else{
-			return false;
-		}
-	}//½ºÅ©·² 2¸í »ıÁ¸ Ã¼Å©
-	
-	public static void main(String[] args){
-		Server server = new Server();
-		server.init();
-	}//Main
-	
-	
-	public class Manager extends Thread{
-		Socket cSocket;
-        DataInputStream in;
-        DataOutputStream out; 
-		
-        public Manager(Socket cSocket){
-        	this.cSocket = cSocket;
-        	try{
-        		in = new DataInputStream(cSocket.getInputStream());
-        		out = new DataOutputStream(socket.getOutputStream());
-        	} catch(Exception e){
-        		e.printStackTrace();
-        	}
-        }//Manager »ı¼ºÀÚ
-        
-        @Override
-        public void run(){
-        	String name = "";
-        	try{
-        		while( (name = in.readUTF())!= null){
-        			if(clients.containsKey(name)){
-                         out.writeUTF("Áßº¹µÈ ÀÌ¸§ÀÔ´Ï´Ù.");
-                    }
-        			else{
-        				System.out.println("[" + name + "]´ÔÀÌ Á¢¼ÓÇÏ¼Ì½À´Ï´Ù.");
-                    	out.writeUTF("");
-                    	break;
-        			}
-        		}
-        		clients.put(name, out);
-        		votes.put(name, 0);
-        		sendToAll("---------------------");
-        		sendToAll("[" + name + "]´ÔÀÌ Á¢¼ÓÇÏ¼Ì½À´Ï´Ù.");
-        		sendToAll("---------------------");
-        		
-        		if(clients.size() == 10){
-        			Thread daySetting = new DaySetting();
-        			daySetting.start();
-        		}
-        		while(in != null){
-        			String msg = in.readUTF();
-        			
-        			if(day){
-        				if(jobs.get(name) == "Dead"){
-        					if(msg.equals("!quit")){
-        						System.out.println(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            	        		sendToAll(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            	        		deleteName(name);
-            					break;
-        					}
-            				System.out.println("<»ç¸ÁÀÚ>" + msg);
-            				sendToJob("Dead", "<»ç¸ÁÀÚ>" + msg);
-            				continue;
-            			}
-        				if(msg.startsWith("!")){
-            				if(msg.startsWith("!ÅõÇ¥")){
-            					msg = msg.replace("!ÅõÇ¥ ", "");
-            					if(jobs.get(msg) == "Dead"){
-            						out.writeUTF(msg + "´Â ÀÌ¹Ì Á×Àº »ç¶÷ÀÔ´Ï´Ù.");
-            						continue;
-            					}
-            					else if(msg == "skip"){
-            						skip++;
-            					}
-            					int vote = votes.get(msg);
-            					votes.put(msg, vote + 1);
-            				}
-            				else if(msg.startsWith("!ºĞ¼®") && (jobs.get(name) == "Scientist")){
-            					msg = msg.replace("!ºĞ¼® ", "");
-            					if(jobs.get(msg) == "Scientist"){
-            						continue;
-            					}
-            					if(jobs.get(msg) == "Skrull"){
-            						sendToAll(msg + "Àº ½ºÅ©·²ÀÔ´Ï´Ù! Ãß¹æÇÏ¼¼¿ä!");
-            					}
-            					else{
-            						sendToAll("ºĞ¼®ÀÌ ½ÇÆĞÇß½À´Ï´Ù.");
-            					}
-            				}
-            				else if(msg.equals("!quit")){
-            					System.out.println(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            	        		sendToAll(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            	        		deleteName(name);
-            					break;
-            				}
-        				}
-        				else{
-            				System.out.println(msg);
-            				sendToAll(msg);
-        				}
-        			}//³·
-        			
-        			if(!day){
-        				if(jobs.get(name) == "Dead"){
-        					if(msg.equals("!quit")){
-        						System.out.println(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            	        		sendToAll(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            	        		deleteName(name);
-            					break;
-        					}
-            				System.out.println("<»ç¸ÁÀÚ>" + msg);
-            				sendToJob("Dead", "<»ç¸ÁÀÚ>" + msg);
-            				continue;
-            			}
-        				if(msg.startsWith("!")){
-            				if(msg.startsWith("!Á¦¹°") && ((jobs.get(name) == "Skrull") || (jobs.get(name) == "Betrayer"))){
-            					if(msg.startsWith("!Á¦¹°") && kill){
-            						msg = msg.replace("!Á¦¹° ", "");
-            						if(jobs.get(msg) == "Skrull" || jobs.get(msg) == "Betrayer"){
-            							out.writeUTF("°°Àº ½ºÅ©·² Áø¿µÀÔ´Ï´Ù.");
-            							continue;
-            						}
-            						else if(jobs.get(msg) == "Dead"){
-            							out.writeUTF("ÀÌ¹Ì Á×Àº »ç¶÷ÀÔ´Ï´Ù.");
-            							continue;
-            						}
-            						else if(isTwoSkrull() && jobs.get(msg) == "Scientist"){
-            							out.writeUTF("¾ÆÁ÷ °úÇĞÀÚ¸¦ Á×ÀÏ ¼ö ¾ø½À´Ï´Ù.");
-            							continue;
-            						}
-            						sendToAll("Á¦¹°ÀÌ ¼±ÅÃµÇ¾ú½À´Ï´Ù.");
-            						sendToAll("¼±ÅÃµÈ Á¦¹°Àº " + msg + "ÀÔ´Ï´Ù.");
-            						jobs.put(msg, "Dead");
-            						kill = false;
-            					}
-            				}
-            				else if(msg.equals("!quit")){
-            					System.out.println(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            					deleteName(name);
-            	        		sendToAll(name + "´ÔÀÌ ÅğÀåÇÏ¼Ì½À´Ï´Ù.");
-            					break;
-            				}
-            			}// ¸í·É¾î ÀÔ·Â½Ã
-            			else if(jobs.get(name) == "Skrull" || jobs.get(name) == "Betrayer"){
-            				System.out.println(msg);
-            				sendToJob("Skrull", msg);
-            				sendToJob("Betrayer", msg);
-            			}
-        			}//¹ã
-        		}
-        	} catch(SocketException se){
-        		se.printStackTrace();
-        	}catch(Exception e){
-        		e.printStackTrace();
-        	} finally{
-        		clients.remove(name);
-        		jobs.remove(name);
-        		votes.remove(name);
-        	}
-        }
-	}//Manager ³¡
-	
-	public class DaySetting extends Thread{
-		public DaySetting(){
-			day = true;
-		}
-		
-		@Override
-		public void run(){
-			System.out.println("================");
-			System.out.println("°ÔÀÓÀ» ½ÃÀÛÇÕ´Ï´Ù.");
-			System.out.println("================");
-			sendToAll("================");
-			sendToAll("°ÔÀÓÀ» ½ÃÀÛÇÕ´Ï´Ù.");
-			sendToAll("================");
-			
-			jobSetting();
-			voteReset();
-			
-			while(true){
-				try {
-					System.out.println("================");
-					System.out.println("³·ÀÌ ¹à¾Ò½À´Ï´Ù.");
-					System.out.println("================");
-					sendToAll("================");
-					sendToAll("³·ÀÌ ¹à¾Ò½À´Ï´Ù.");
-					sendToAll("================");
-					
-					day = true;
-					
-					winResult();
-					
-					if(win == 1){
-						System.out.println("================");
-						System.out.println("Áö±¸ÀÎ Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						System.out.println("================");
-						sendToAll("================");
-						sendToAll("Áö±¸ÀÎ Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						sendToAll("================");
-						break;
-					}
-					else if(win == 2){
-						System.out.println("================");
-						System.out.println("½ºÅ©·² Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						System.out.println("================");
-						sendToAll("================");
-						sendToAll("½ºÅ©·² Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						sendToAll("================");
-						break;
-					}
-					
-					for(int i = 0; i < 120; i++){
-						Thread.sleep(1000);
-					}
-					System.out.println("1ºĞ ³²¾Ò½À´Ï´Ù.");
-					sendToAll("1ºĞ ³²¾Ò½À´Ï´Ù.");
-					for(int i = 0; i < 60; i++){
-						Thread.sleep(1000);
-					}
-					
-					System.out.println("ÅõÇ¥ Á¾·á 1ºĞ ³²¾Ò½À´Ï´Ù.");
-					sendToAll("ÅõÇ¥ Á¾·á 1ºĞ ³²¾Ò½À´Ï´Ù.");
-					for(int i = 0; i < 60; i++){
-						Thread.sleep(1000);
-					}
-					System.out.println("================");
-					System.out.println("¹ãÀÌ Ã£¾Æ¿Ô½À´Ï´Ù.");
-					System.out.println("================");
-					sendToAll("================");
-					sendToAll("¹ãÀÌ Ã£¾Æ¿Ô½À´Ï´Ù.");
-					sendToAll("================");
-					
-					kill = true;
-					day = false;
-					
-					String vote;
-					if((vote = voteResult()) != ""){
-						System.out.println("================");
-						System.out.println(vote + "´ÔÀÌ Ãß¹æµÇ¾ú½À´Ï´Ù.");
-						System.out.println("================");
-						sendToAll("================");
-						sendToAll(vote + "´ÔÀÌ Ãß¹æµÇ¾ú½À´Ï´Ù.");
-						sendToAll("================");
-						jobs.put(vote, "Dead");
-					}
-					voteReset();
-					skip = 0;
-					
-					winResult();
-					if(win == 1){
-						System.out.println("================");
-						System.out.println("Áö±¸ÀÎ Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						System.out.println("================");
-						sendToAll("================");
-						sendToAll("Áö±¸ÀÎ Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						sendToAll("================");
-						break;
-					}
-					else if(win == 2){
-						System.out.println("================");
-						System.out.println("½ºÅ©·² Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						System.out.println("================");
-						sendToAll("================");
-						sendToAll("½ºÅ©·² Áø¿µÀÌ ½Â¸®Çß½À´Ï´Ù.");
-						sendToAll("================");
-						break;
-					}
-					
-					for(int i = 0; i < 60; i++){
-						Thread.sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	}//½Ã°£ °ü¸®
-}//Server
+    } //íŠ¹ì • ì§ì—…ì— ì „ì†¡
 
+    public void jobSetting() {
+        Iterator < String > iter = clients.keySet().iterator();
+        int sci = 1;
+        int skr = 2;
+        int bet = 1;
+        String temp[] = new String[10];
+
+        for (int i = 0; i < 10; i++) {
+            if (i < sci)
+                temp[i] = "1";
+            else if (i < sci + skr)
+                temp[i] = "2";
+            else if (i < sci + skr + bet)
+                temp[i] = "3";
+            else
+                temp[i] = "0";
+        }
+        List < String > job_list = Arrays.asList(temp);
+        Collections.shuffle(job_list);
+        String sci_name = "";
+
+        for (int i = 0; i < job_list.size(); i++) {
+            String name = iter.next();
+            switch (job_list.get(i)) {
+                case "0":
+                    jobs.put(name, "Citizen");
+                    break;
+                case "1":
+                    jobs.put(name, "Scientist");
+                    sci_name = name;
+                    break;
+                case "2":
+                    jobs.put(name, "Skrull");
+                    break;
+                case "3":
+                    jobs.put(name, "Betrayer");
+                    break;
+            }
+        }
+        sendToJob("Citizen", "ë‹¹ì‹ ì€ ì‹œë¯¼ì…ë‹ˆë‹¤.");
+        sendToJob("Scientist", "ë‹¹ì‹ ì€ ê³¼í•™ìì…ë‹ˆë‹¤.");
+        sendToJob("Skrull", "ë‹¹ì‹ ì€ ìŠ¤í¬ëŸ´ì…ë‹ˆë‹¤.");
+        sendToJob("Betrayer", "ë‹¹ì‹ ì€ ë°°ì‹ ìì…ë‹ˆë‹¤.");
+
+        sendToJob("Skrull", "================");
+        sendToJob("Betrayer", "================");
+        sendToJob("Skrull", "ê³¼í•™ìëŠ” " + sci_name + "ì…ë‹ˆë‹¤.");
+        sendToJob("Betrayer", "ê³¼í•™ìëŠ” " + sci_name + "ì…ë‹ˆë‹¤.");
+        sendToJob("Skrull", "================");
+        sendToJob("Betrayer", "================");
+    } //ì§ì—… ë°°ë¶„
+
+    public String voteResult() {
+        Iterator < String > iter = votes.keySet().iterator();
+        int vote = 0;
+        String name = "";
+        String v_name = "";
+        while (iter.hasNext()) {
+            name = iter.next();
+            if (votes.get(name) == 0) {
+                continue;
+            } else if (votes.get(name) > vote) {
+                vote = votes.get(name);
+                v_name = name;
+            }
+        }
+        if (vote == 0 || skip >= vote) {
+            return "";
+        } else {
+            return v_name;
+        }
+    } //íˆ¬í‘œ ê²°ê³¼
+
+    public void voteReset() {
+        Iterator < String > iter = votes.keySet().iterator();
+
+        while (iter.hasNext()) {
+            votes.put(iter.next(), 0);
+        }
+    } //íˆ¬í‘œ ë¦¬ì…‹
+
+    public void winResult() {
+        Iterator < String > iter = jobs.keySet().iterator();
+        int earth_num = 0;
+        int skrull_num = 0;
+
+        while (iter.hasNext()) {
+            String job = jobs.get(iter.next());
+            if (job == "Citizen") {
+                earth_num++;
+            } else if (job == "Scientist") {
+                earth_num++;
+            } else if (job == "Skrull") {
+                skrull_num++;
+            } else if (job == "Betrayer") {
+                skrull_num++;
+            }
+        }
+        if (skrull_num == 0) {
+            win = 1;
+        } else if (skrull_num >= earth_num) {
+            win = 2;
+        } else {
+            win = 0;
+        }
+    } //ìŠ¹ë¦¬ ê²°ê³¼
+
+    public void deleteName(String name) {
+        clients.remove(name);
+        jobs.remove(name);
+        votes.remove(name);
+    } //ë‚˜ê°„ ì¸ì› ë¹„ìš°ê¸°
+
+    public boolean isTwoSkrull() {
+        Iterator < String > iter = jobs.keySet().iterator();
+        int skr_num = 0;
+
+        while (iter.hasNext()) {
+            if (jobs.get(iter.next()) == "Skrull") {
+                skr_num++;
+            }
+        }
+        if (skr_num == 2) {
+            return true;
+        } else {
+            return false;
+        }
+    } //ìŠ¤í¬ëŸ´ 2ëª… ìƒì¡´ ì²´í¬
+
+    public static void main(String[] args) {
+        Server server = new Server();
+        server.init();
+    } //Main
+
+
+    public class Manager extends Thread {
+        Socket cSocket;
+        DataInputStream in ;
+        DataOutputStream out;
+
+        public Manager(Socket cSocket) {
+            this.cSocket = cSocket;
+            try {
+                in = new DataInputStream(cSocket.getInputStream());
+                out = new DataOutputStream(socket.getOutputStream());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } //Manager ìƒì„±ì
+
+        @Override
+        public void run() {
+            String name = "";
+            try {
+                while ((name = in .readUTF()) != null) {
+                    if (clients.containsKey(name)) {
+                        out.writeUTF("ì¤‘ë³µëœ ì´ë¦„ì…ë‹ˆë‹¤.");
+                    } else {
+                        System.out.println("[" + name + "]ë‹˜ì´ ì ‘ì†í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                        out.writeUTF("");
+                        break;
+                    }
+                }
+                clients.put(name, out);
+                votes.put(name, 0);
+                sendToAll("---------------------");
+                sendToAll("[" + name + "]ë‹˜ì´ ì ‘ì†í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                sendToAll("---------------------");
+
+                if (clients.size() == 10) {
+                    Thread daySetting = new DaySetting();
+                    daySetting.start();
+                }
+                while ( in != null) {
+                    String msg = in .readUTF();
+
+                    if (day) {
+                        if (jobs.get(name) == "Dead") {
+                            if (msg.equals("!quit")) {
+                                System.out.println(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                sendToAll(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                deleteName(name);
+                                break;
+                            }
+                            System.out.println("<ì‚¬ë§ì>" + msg);
+                            sendToJob("Dead", "<ì‚¬ë§ì>" + msg);
+                            continue;
+                        }
+                        if (msg.startsWith("!")) {
+                            if (msg.startsWith("!íˆ¬í‘œ")) {
+                                msg = msg.replace("!íˆ¬í‘œ ", "");
+                                if (jobs.get(msg) == "Dead") {
+                                    out.writeUTF(msg + "ëŠ” ì´ë¯¸ ì£½ì€ ì‚¬ëŒì…ë‹ˆë‹¤.");
+                                    continue;
+                                } else if (msg == "skip") {
+                                    skip++;
+                                }
+                                int vote = votes.get(msg);
+                                votes.put(msg, vote + 1);
+                            } else if (msg.startsWith("!ë¶„ì„") && (jobs.get(name) == "Scientist")) {
+                                msg = msg.replace("!ë¶„ì„ ", "");
+                                if (jobs.get(msg) == "Scientist") {
+                                    continue;
+                                }
+                                if (jobs.get(msg) == "Skrull") {
+                                    sendToAll(msg + "ì€ ìŠ¤í¬ëŸ´ì…ë‹ˆë‹¤! ì¶”ë°©í•˜ì„¸ìš”!");
+                                } else {
+                                    sendToAll("ë¶„ì„ì´ ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
+                                }
+                            } else if (msg.equals("!quit")) {
+                                System.out.println(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                sendToAll(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                deleteName(name);
+                                break;
+                            }
+                        } else {
+                            System.out.println(msg);
+                            sendToAll(msg);
+                        }
+                    } //ë‚®
+
+                    if (!day) {
+                        if (jobs.get(name) == "Dead") {
+                            if (msg.equals("!quit")) {
+                                System.out.println(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                sendToAll(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                deleteName(name);
+                                break;
+                            }
+                            System.out.println("<ì‚¬ë§ì>" + msg);
+                            sendToJob("Dead", "<ì‚¬ë§ì>" + msg);
+                            continue;
+                        }
+                        if (msg.startsWith("!")) {
+                            if (msg.startsWith("!ì œë¬¼") && ((jobs.get(name) == "Skrull") || (jobs.get(name) == "Betrayer"))) {
+                                if (msg.startsWith("!ì œë¬¼") && kill) {
+                                    msg = msg.replace("!ì œë¬¼ ", "");
+                                    if (jobs.get(msg) == "Skrull" || jobs.get(msg) == "Betrayer") {
+                                        out.writeUTF("ê°™ì€ ìŠ¤í¬ëŸ´ ì§„ì˜ì…ë‹ˆë‹¤.");
+                                        continue;
+                                    } else if (jobs.get(msg) == "Dead") {
+                                        out.writeUTF("ì´ë¯¸ ì£½ì€ ì‚¬ëŒì…ë‹ˆë‹¤.");
+                                        continue;
+                                    } else if (isTwoSkrull() && jobs.get(msg) == "Scientist") {
+                                        out.writeUTF("ì•„ì§ ê³¼í•™ìë¥¼ ì£½ì¼ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
+                                        continue;
+                                    }
+                                    sendToAll("ì œë¬¼ì´ ì„ íƒë˜ì—ˆìŠµë‹ˆë‹¤.");
+                                    sendToAll("ì„ íƒëœ ì œë¬¼ì€ " + msg + "ì…ë‹ˆë‹¤.");
+                                    jobs.put(msg, "Dead");
+                                    kill = false;
+                                }
+                            } else if (msg.equals("!quit")) {
+                                System.out.println(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                deleteName(name);
+                                sendToAll(name + "ë‹˜ì´ í‡´ì¥í•˜ì…¨ìŠµë‹ˆë‹¤.");
+                                break;
+                            }
+                        } // ëª…ë ¹ì–´ ì…ë ¥ì‹œ
+                        else if (jobs.get(name) == "Skrull" || jobs.get(name) == "Betrayer") {
+                            System.out.println(msg);
+                            sendToJob("Skrull", msg);
+                            sendToJob("Betrayer", msg);
+                        }
+                    } //ë°¤
+                }
+            } catch (SocketException se) {
+                se.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                clients.remove(name);
+                jobs.remove(name);
+                votes.remove(name);
+            }
+        }
+    } //Manager ë
+
+    public class DaySetting extends Thread {
+        public DaySetting() {
+            day = true;
+        }
+
+        @Override
+        public void run() {
+            System.out.println("================");
+            System.out.println("ê²Œì„ì„ ì‹œì‘í•©ë‹ˆë‹¤.");
+            System.out.println("================");
+            sendToAll("================");
+            sendToAll("ê²Œì„ì„ ì‹œì‘í•©ë‹ˆë‹¤.");
+            sendToAll("================");
+
+            jobSetting();
+            voteReset();
+
+            while (true) {
+                try {
+                    System.out.println("================");
+                    System.out.println("ë‚®ì´ ë°ì•˜ìŠµë‹ˆë‹¤.");
+                    System.out.println("================");
+                    sendToAll("================");
+                    sendToAll("ë‚®ì´ ë°ì•˜ìŠµë‹ˆë‹¤.");
+                    sendToAll("================");
+
+                    day = true;
+
+                    winResult();
+
+                    if (win == 1) {
+                        System.out.println("================");
+                        System.out.println("ì§€êµ¬ì¸ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        System.out.println("================");
+                        sendToAll("================");
+                        sendToAll("ì§€êµ¬ì¸ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        sendToAll("================");
+                        break;
+                    } else if (win == 2) {
+                        System.out.println("================");
+                        System.out.println("ìŠ¤í¬ëŸ´ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        System.out.println("================");
+                        sendToAll("================");
+                        sendToAll("ìŠ¤í¬ëŸ´ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        sendToAll("================");
+                        break;
+                    }
+
+                    for (int i = 0; i < 120; i++) {
+                        Thread.sleep(1000);
+                    }
+                    System.out.println("1ë¶„ ë‚¨ì•˜ìŠµë‹ˆë‹¤.");
+                    sendToAll("1ë¶„ ë‚¨ì•˜ìŠµë‹ˆë‹¤.");
+                    for (int i = 0; i < 60; i++) {
+                        Thread.sleep(1000);
+                    }
+
+                    System.out.println("íˆ¬í‘œ ì¢…ë£Œ 1ë¶„ ë‚¨ì•˜ìŠµë‹ˆë‹¤.");
+                    sendToAll("íˆ¬í‘œ ì¢…ë£Œ 1ë¶„ ë‚¨ì•˜ìŠµë‹ˆë‹¤.");
+                    for (int i = 0; i < 60; i++) {
+                        Thread.sleep(1000);
+                    }
+                    System.out.println("================");
+                    System.out.println("ë°¤ì´ ì°¾ì•„ì™”ìŠµë‹ˆë‹¤.");
+                    System.out.println("================");
+                    sendToAll("================");
+                    sendToAll("ë°¤ì´ ì°¾ì•„ì™”ìŠµë‹ˆë‹¤.");
+                    sendToAll("================");
+
+                    kill = true;
+                    day = false;
+
+                    String vote;
+                    if ((vote = voteResult()) != "") {
+                        System.out.println("================");
+                        System.out.println(vote + "ë‹˜ì´ ì¶”ë°©ë˜ì—ˆìŠµë‹ˆë‹¤.");
+                        System.out.println("================");
+                        sendToAll("================");
+                        sendToAll(vote + "ë‹˜ì´ ì¶”ë°©ë˜ì—ˆìŠµë‹ˆë‹¤.");
+                        sendToAll("================");
+                        jobs.put(vote, "Dead");
+                    }
+                    voteReset();
+                    skip = 0;
+
+                    winResult();
+                    if (win == 1) {
+                        System.out.println("================");
+                        System.out.println("ì§€êµ¬ì¸ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        System.out.println("================");
+                        sendToAll("================");
+                        sendToAll("ì§€êµ¬ì¸ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        sendToAll("================");
+                        break;
+                    } else if (win == 2) {
+                        System.out.println("================");
+                        System.out.println("ìŠ¤í¬ëŸ´ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        System.out.println("================");
+                        sendToAll("================");
+                        sendToAll("ìŠ¤í¬ëŸ´ ì§„ì˜ì´ ìŠ¹ë¦¬í–ˆìŠµë‹ˆë‹¤.");
+                        sendToAll("================");
+                        break;
+                    }
+
+                    for (int i = 0; i < 60; i++) {
+                        Thread.sleep(1000);
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    } //ì‹œê°„ ê´€ë¦¬
+} //Server
