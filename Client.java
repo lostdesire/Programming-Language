@@ -5,121 +5,116 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
-	public static void main(String[] args){
-		Scanner scv = new Scanner(System.in);
-		
-		try{
-			InetAddress localAddress = InetAddress.getLocalHost();
-            Socket socket = new Socket(localAddress, 8000);      
-            System.out.println("¸¶ÇÇ¾Æ ¼­¹ö Á¢¼Ó");
-           
+    public static void main(String[] args) {
+        Scanner scv = new Scanner(System.in);
+
+        try {
+            InetAddress localAddress = InetAddress.getLocalHost();
+            Socket socket = new Socket(localAddress, 8000);
+            System.out.println("ë§ˆí”¼ì•„ ì„œë²„ ì ‘ì†");
+
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             String name = "";
-            while(true){
-                System.out.println("ÀÌ¸§À» ÀÔ·ÂÇØ ÁÖ¼¼¿ä.");
+            while (true) {
+                System.out.println("ì´ë¦„ì„ ì…ë ¥í•´ ì£¼ì„¸ìš”.");
                 name = scv.nextLine();
                 out.writeUTF(name);
                 out.flush();
-                String chk_code = in.readUTF();
-                if(!chk_code.equals("Áßº¹µÈ ÀÌ¸§ÀÔ´Ï´Ù.")){
+                String chk_code = in .readUTF();
+                if (!chk_code.equals("ì¤‘ë³µëœ ì´ë¦„ì…ë‹ˆë‹¤.")) {
                     break;
                 }
-                System.out.println("Áßº¹µÈ ÀÌ¸§ÀÔ´Ï´Ù.");
+                System.out.println("ì¤‘ë³µëœ ì´ë¦„ì…ë‹ˆë‹¤.");
             }
-                
-            System.out.println("¸¶ÇÇ¾Æ ¼­¹ö ÀÔÀå");
-            
+
+            System.out.println("ë§ˆí”¼ì•„ ì„œë²„ ì…ì¥");
+
             Thread sender = new Sender(name, socket);
             sender.start();
-            Thread receiver = new Receiver(socket); 
+            Thread receiver = new Receiver(socket);
             receiver.start();
-        }catch(Exception e){
-        	scv.close();
-        	e.printStackTrace();
-        }   
-    }//Main
+        } catch (Exception e) {
+            scv.close();
+            e.printStackTrace();
+        }
+    } //Main
 }
 
-class Receiver extends Thread{
-	Socket socket;
-	DataInputStream in;
-	
-	public Receiver(Socket socket){
-		this.socket = socket;
-		try{
-			in = new DataInputStream(this.socket.getInputStream());
-		} catch(Exception e){
-			e.printStackTrace();
-		}
-	}//Receiver »ı¼ºÀÚ
-	
-	@Override
-	public void run(){
-		try{
-			while(in != null){
-				String msg = in.readUTF();
-                if(msg.equals("Áßº¹µÈ ÀÌ¸§ÀÔ´Ï´Ù.")){
-                    System.out.println("Áßº¹µÈ ÀÌ¸§ÀÔ´Ï´Ù.");
-                }else{
+class Receiver extends Thread {
+    Socket socket;
+    DataInputStream in ;
+
+    public Receiver(Socket socket) {
+        this.socket = socket;
+        try {
+            in = new DataInputStream(this.socket.getInputStream());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    } //Receiver ìƒì„±ì
+
+    @Override
+    public void run() {
+        try {
+            while ( in != null) {
+                String msg = in .readUTF();
+                if (msg.equals("ì¤‘ë³µëœ ì´ë¦„ì…ë‹ˆë‹¤.")) {
+                    System.out.println("ì¤‘ë³µëœ ì´ë¦„ì…ë‹ˆë‹¤.");
+                } else {
                     System.out.println(msg);
                 }
-			}
-		} catch(Exception e){
-			e.printStackTrace();
-		}
-	}
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
 
-class Sender extends Thread{
-	Socket socket;
-	DataOutputStream out;
+class Sender extends Thread {
+    Socket socket;
+    DataOutputStream out;
     String name;
-    
-    public Sender(String name, Socket socket){
-    	this.socket = socket;
-    	try{
-    		out = new DataOutputStream(this.socket.getOutputStream());
-    		this.name = name;
-    	} catch(Exception e){
-    		e.printStackTrace();
-    	}
-    }//Sender »ı¼ºÀÚ
-    
+
+    public Sender(String name, Socket socket) {
+        this.socket = socket;
+        try {
+            out = new DataOutputStream(this.socket.getOutputStream());
+            this.name = name;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    } //Sender ìƒì„±ì
+
     @Override
-    public void run(){
-    	Scanner scv = new Scanner(System.in);
-    	try{
-    		while(out != null){
-    			String msg = scv.nextLine();
-    			
-    			if(msg.trim().startsWith("!")){
-    				if(msg.startsWith("!ÅõÇ¥")){
-    					out.writeUTF(msg);
-    				}
-    				else if(msg.startsWith("!ºĞ¼®")){
-    					out.writeUTF(msg);
-    				}
-    				else if(msg.startsWith("!Á¦¹°")){
-    					out.writeUTF(msg);
-    				}
-    				else if(msg.startsWith("!quit")){
-    					System.out.println("¼­¹ö¿¡¼­ ³ª°©´Ï´Ù.");
-    					out.writeUTF(msg);
-    					scv.close();
-    					System.exit(0);
-    					break;
-    				}
-    				else{
-    					System.out.println("¾ø´Â ¸í·É¾î ¾÷´Ï´Ù. ´Ù½Ã ÀÔ·ÂÇØ ÁÖ¼¼¿ä.");
-    				}
-    			}
-    			else{
-    				out.writeUTF("[" + name + "] : " + msg);
-    			}
-    		}
-    	} catch(Exception e){
-    		e.printStackTrace();
-    	}
+    public void run() {
+        Scanner scv = new Scanner(System.in);
+        try {
+            while (out != null) {
+                String msg = scv.nextLine();
+
+                if (msg.trim().startsWith("!")) {
+                    if (msg.startsWith("!íˆ¬í‘œ")) {
+                        out.writeUTF(msg);
+                    } else if (msg.startsWith("!ë¶„ì„")) {
+                        out.writeUTF(msg);
+                    } else if (msg.startsWith("!ì œë¬¼")) {
+                        out.writeUTF(msg);
+                    } else if (msg.startsWith("!quit")) {
+                        System.out.println("ì„œë²„ì—ì„œ ë‚˜ê°‘ë‹ˆë‹¤.");
+                        out.writeUTF(msg);
+                        scv.close();
+                        System.exit(0);
+                        break;
+                    } else {
+                        System.out.println("ì—†ëŠ” ëª…ë ¹ì–´ ì—…ë‹ˆë‹¤. ë‹¤ì‹œ ì…ë ¥í•´ ì£¼ì„¸ìš”.");
+                    }
+                } else {
+                    out.writeUTF("[" + name + "] : " + msg);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
